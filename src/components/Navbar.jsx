@@ -22,15 +22,11 @@ export default function Navbar({ activePage, setActivePage }) {
       <div className="container nav-wrapper">
         <a href="#home" className="logo-link" onClick={(e) => { e.preventDefault(); handleNavClick('home'); }} style={{ display: 'flex', alignItems: 'center' }}>
           <img 
-            src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTd0Q-5OgwZBVtOSnO3Ps_bcoXjbTj4jJuzKg&s" 
+            src="/logo.png" 
             alt="Saraswathi Super Market Logo" 
             style={{ height: '3.25rem', width: 'auto', objectFit: 'contain', borderRadius: '4px' }}
             onError={(e) => {
-              e.target.style.display = 'none';
-              const fallback = document.createElement('span');
-              fallback.innerText = 'Saraswathi Super Market';
-              fallback.setAttribute('style', 'font-family: var(--font-display); font-weight: 800; color: var(--leaf-green); font-size: 1.35rem;');
-              e.target.parentNode.appendChild(fallback);
+              e.target.src = "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTd0Q-5OgwZBVtOSnO3Ps_bcoXjbTj4jJuzKg&s";
             }}
           />
         </a>

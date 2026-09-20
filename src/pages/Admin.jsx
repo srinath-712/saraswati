@@ -22,7 +22,6 @@ export default function Admin({ offers, setOffers, bannerSettings, setBannerSett
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState('');
   const [loginSuccess, setLoginSuccess] = useState('');
-  const [isSignUp, setIsSignUp] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Form State for Add/Edit Offer
@@ -79,7 +78,7 @@ export default function Admin({ offers, setOffers, bannerSettings, setBannerSett
     };
   }, [hasSupabaseConfig]);
 
-  // Handle Supabase Auth Login / Register
+  // Handle Supabase Auth Login
   const handleSupabaseAuth = async (e) => {
     e.preventDefault();
     setLoginError('');
@@ -87,46 +86,34 @@ export default function Admin({ offers, setOffers, bannerSettings, setBannerSett
     setIsSubmitting(true);
 
     try {
-      if (isSignUp) {
-        const data = await signUpWithSupabase(email, password);
-        if (data.session) {
-          setIsLoggedIn(true);
-          setAuthMode('supabase');
-          setCurrentUserEmail(data.user?.email || email);
-          setLoginSuccess('Account created and authenticated successfully!');
-        } else {
-          setLoginSuccess('Registration successful! Check your email inbox to confirm your account.');
-        }
-      } else {
-        const data = await signInWithSupabase(email, password);
-        if (data.session) {
-          setIsLoggedIn(true);
-          setAuthMode('supabase');
-          setCurrentUserEmail(data.user?.email || email);
-          setLoginSuccess('Logged in successfully via Supabase!');
-        }
+      const data = await signInWithSupabase(email, password);
+      if (data.session) {
+        setIsLoggedIn(true);
+        setAuthMode('supabase');
+        setCurrentUserEmail(data.user?.email || email);
+        setLoginSuccess('Logged in successfully via Supabase!');
       }
     } catch (err) {
       console.error('Supabase Auth error:', err);
-      setLoginError(err.message || 'Authentication failed. Please check your email and password.');
+      setLoginError(err.message || 'Authentication failed. Please check your credentials in Supabase.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Handle Fallback Local Admin Login
+  // Handle Fallback Local Admin Login (Uses environment variables from .env)
   const handleFallbackLogin = (e) => {
     e.preventDefault();
-    const validUser = import.meta.env.VITE_ADMIN_USERNAME || 'admin';
-    const validPass = import.meta.env.VITE_ADMIN_PASSWORD || 'saraswati2026';
+    const validUser = import.meta.env.VITE_ADMIN_USERNAME;
+    const validPass = import.meta.env.VITE_ADMIN_PASSWORD;
 
-    if (username.trim() === validUser && password === validPass) {
+    if (validUser && validPass && username.trim() === validUser && password === validPass) {
       setIsLoggedIn(true);
       setAuthMode('fallback');
       sessionStorage.setItem('saraswati_admin_logged', 'true');
       setLoginError('');
     } else {
-      setLoginError('Invalid username or password. Please try again.');
+      setLoginError('Invalid credentials. Please check your environment configuration or Supabase setup.');
     }
   };
 
@@ -301,97 +288,59 @@ export default function Admin({ offers, setOffers, bannerSettings, setBannerSett
             </div>
           )}
 
-          {/* Form Switcher for Supabase Auth vs Fallback */}
+          {/* Sign In Form */}
           {hasSupabaseConfig ? (
-            <div>
-              <div style={{ display: 'flex', borderRadius: '6px', background: '#f0ece1', padding: '3px', marginBottom: '1.5rem' }}>
-                <button
-                  type="button"
-                  onClick={() => setIsSignUp(false)}
-                  style={{
-                    flex: 1,
-                    padding: '0.5rem',
-                    border: 'none',
-                    borderRadius: '4px',
-                    fontSize: '0.85rem',
-                    fontWeight: '600',
-                    cursor: 'pointer',
-                    background: !isSignUp ? 'var(--leaf-green)' : 'transparent',
-                    color: !isSignUp ? '#fff' : 'var(--ink-color)'
-                  }}
-                >
-                  Sign In
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsSignUp(true)}
-                  style={{
-                    flex: 1,
-                    padding: '0.5rem',
-                    border: 'none',
-                    borderRadius: '4px',
-                    fontSize: '0.85rem',
-                    fontWeight: '600',
-                    cursor: 'pointer',
-                    background: isSignUp ? 'var(--leaf-green)' : 'transparent',
-                    color: isSignUp ? '#fff' : 'var(--ink-color)'
-                  }}
-                >
-                  Register Account
-                </button>
+            <form onSubmit={handleSupabaseAuth}>
+              <div className="form-group">
+                <label htmlFor="email">Email Address</label>
+                <input 
+                  type="email" 
+                  id="email" 
+                  className="form-control" 
+                  placeholder="admin@saraswati.com"
+                  value={email} 
+                  onChange={(e) => setEmail(e.target.value)} 
+                  required 
+                />
+              </div>
+              <div className="form-group" style={{ marginBottom: '1.5rem' }}>
+                <label htmlFor="password">Password</label>
+                <input 
+                  type="password" 
+                  id="password" 
+                  className="form-control" 
+                  placeholder="••••••••"
+                  value={password} 
+                  onChange={(e) => setPassword(e.target.value)} 
+                  required 
+                />
               </div>
 
-              <form onSubmit={handleSupabaseAuth}>
-                <div className="form-group">
-                  <label htmlFor="email">Email Address</label>
-                  <input 
-                    type="email" 
-                    id="email" 
-                    className="form-control" 
-                    placeholder="admin@saraswati.com"
-                    value={email} 
-                    onChange={(e) => setEmail(e.target.value)} 
-                    required 
-                  />
-                </div>
-                <div className="form-group" style={{ marginBottom: '1.5rem' }}>
-                  <label htmlFor="password">Password</label>
-                  <input 
-                    type="password" 
-                    id="password" 
-                    className="form-control" 
-                    placeholder="••••••••"
-                    value={password} 
-                    onChange={(e) => setPassword(e.target.value)} 
-                    required 
-                  />
-                </div>
+              {loginError && (
+                <p style={{ color: 'var(--brick)', fontSize: '0.85rem', fontWeight: 'bold', marginBottom: '1rem', textAlign: 'center' }}>
+                  {loginError}
+                </p>
+              )}
 
-                {loginError && (
-                  <p style={{ color: 'var(--brick)', fontSize: '0.85rem', fontWeight: 'bold', marginBottom: '1rem', textAlign: 'center' }}>
-                    {loginError}
-                  </p>
-                )}
+              {loginSuccess && (
+                <p style={{ color: '#2e7d32', fontSize: '0.85rem', fontWeight: 'bold', marginBottom: '1rem', textAlign: 'center' }}>
+                  {loginSuccess}
+                </p>
+              )}
 
-                {loginSuccess && (
-                  <p style={{ color: '#2e7d32', fontSize: '0.85rem', fontWeight: 'bold', marginBottom: '1rem', textAlign: 'center' }}>
-                    {loginSuccess}
-                  </p>
-                )}
-
-                <button type="submit" className="btn btn-primary" style={{ width: '100%' }} disabled={isSubmitting}>
-                  {isSubmitting ? 'Authenticating...' : (isSignUp ? 'Create Supabase Admin Account' : 'Log In with Supabase')}
-                </button>
-              </form>
-            </div>
+              <button type="submit" className="btn btn-primary" style={{ width: '100%' }} disabled={isSubmitting}>
+                {isSubmitting ? 'Authenticating...' : 'Log In'}
+              </button>
+            </form>
           ) : (
             <form onSubmit={handleFallbackLogin}>
               <div className="form-group">
-                <label htmlFor="username">Username</label>
+                <label htmlFor="username">Admin Username / Email</label>
                 <input 
                   type="text" 
                   id="username" 
                   className="form-control" 
+                  placeholder="admin@saraswati.com"
                   value={username} 
                   onChange={(e) => setUsername(e.target.value)} 
                   required 
@@ -403,6 +352,7 @@ export default function Admin({ offers, setOffers, bannerSettings, setBannerSett
                   type="password" 
                   id="password" 
                   className="form-control" 
+                  placeholder="••••••••"
                   value={password} 
                   onChange={(e) => setPassword(e.target.value)} 
                   required 
@@ -418,9 +368,6 @@ export default function Admin({ offers, setOffers, bannerSettings, setBannerSett
               <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>
                 Log In
               </button>
-              <p style={{ textAlign: 'center', color: '#a89c94', fontSize: '0.75rem', marginTop: '1.5rem' }}>
-                Demo credentials: <code>admin</code> / <code>saraswati2026</code>
-              </p>
             </form>
           )}
         </div>
