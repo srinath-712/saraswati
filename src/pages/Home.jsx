@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 
 export default function Home({ offers, setActivePage }) {
   const whatsappUrl = "https://wa.me/919943211715?text=Hello%20Saraswathi%20Super%20Market,%20I'm%20visiting%20your%20website%20and%20want%20to%20know%20more%20about%20your%20offers.";
@@ -40,28 +40,69 @@ export default function Home({ offers, setActivePage }) {
     "Aachi", "Fortune", "Aashirvaad", "Britannia", "Tata Salt", "Gold Winner"
   ];
 
-  const photoStripImages = [
+  const gallerySlides = [
     {
       url: "/shop/vegetables.jpg",
-      fallback: "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=400",
-      alt: "Fresh Produce Section"
+      fallback: "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=1200",
+      alt: "Fresh Fruits & Vegetables Display",
+      caption: "Fresh Fruits & Vegetables",
+      sub: "Daily arrivals of farm-fresh fruits, vegetables & produce"
     },
     {
-      url: "/shop/spices.jpg",
-      fallback: "https://images.unsplash.com/photo-1596040033229-a9821ebd058d?auto=format&fit=crop&q=80&w=400",
-      alt: "Spices and Provisions"
+      url: "/shop/fruits.jpg",
+      fallback: "https://images.unsplash.com/photo-1610832958506-aa56368176cf?auto=format&fit=crop&q=80&w=1200",
+      alt: "Handpicked Fruit Varieties",
+      caption: "Handpicked Fresh Fruits",
+      sub: "Bananas, apples, pomegranates, oranges & seasonal fruits"
     },
     {
       url: "/shop/aisles.jpg",
-      fallback: "https://images.unsplash.com/photo-1578916171728-46686eac8d58?auto=format&fit=crop&q=80&w=400",
-      alt: "Organized Grocery Aisles"
+      fallback: "https://images.unsplash.com/photo-1578916171728-46686eac8d58?auto=format&fit=crop&q=80&w=1200",
+      alt: "Organized Grocery Aisles",
+      caption: "Spacious Grocery Aisles",
+      sub: "100+ top brands of packaged foods, beverages & provisions"
     },
     {
-      url: "/shop/frontage.jpg",
-      fallback: "https://images.unsplash.com/photo-1604719312566-8912e9227c6a?auto=format&fit=crop&q=80&w=400",
-      alt: "Supermarket Frontage"
+      url: "/shop/jewellery.jpg",
+      fallback: "https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?auto=format&fit=crop&q=80&w=1200",
+      alt: "Fashion Jewellery & Cosmetics Section",
+      caption: "Jewellery & Personal Care",
+      sub: "Fashion jewellery, bangles, cosmetics & beauty items"
+    },
+    {
+      url: "/shop/kitchenware.jpg",
+      fallback: "https://images.unsplash.com/photo-1556911220-e15b29be8c8f?auto=format&fit=crop&q=80&w=1200",
+      alt: "Kitchen Appliances & Home Goods",
+      caption: "Household & Kitchenware",
+      sub: "Cookware, mixers, gas stoves & household essential items"
     }
   ];
+
+  const [activeSlide, setActiveSlide] = useState(0);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+
+  const goToSlide = useCallback((index) => {
+    if (isTransitioning) return;
+    setIsTransitioning(true);
+    setActiveSlide(index);
+    setTimeout(() => setIsTransitioning(false), 600);
+  }, [isTransitioning]);
+
+  const goNext = useCallback(() => {
+    goToSlide((activeSlide + 1) % gallerySlides.length);
+  }, [activeSlide, gallerySlides.length, goToSlide]);
+
+  const goPrev = useCallback(() => {
+    goToSlide((activeSlide - 1 + gallerySlides.length) % gallerySlides.length);
+  }, [activeSlide, gallerySlides.length, goToSlide]);
+
+  // Auto-advance every 4 seconds
+  useEffect(() => {
+    if (isPaused) return;
+    const timer = setInterval(goNext, 4000);
+    return () => clearInterval(timer);
+  }, [goNext, isPaused]);
 
   return (
     <div>
@@ -234,8 +275,8 @@ export default function Home({ offers, setActivePage }) {
         </div>
       </section>
 
-      {/* Photo Strip Gallery */}
-      <section className="section" style={{ backgroundColor: 'var(--market-cream)', paddingBottom: '5rem' }}>
+      {/* Gallery Slider Section */}
+      <section className="section gallery-section" style={{ backgroundColor: 'var(--market-cream)', paddingBottom: '5rem' }}>
         <div className="container">
           <h2 className="section-title">
             A Glimpse of Our Store
@@ -247,19 +288,89 @@ export default function Home({ offers, setActivePage }) {
             Step into a spacious and fully stocked shopping environment. Clean aisles and hygienic storage guaranteed.
           </p>
 
-          <div className="photo-strip">
-            {photoStripImages.map((img, idx) => (
-              <div key={idx} className="photo-strip-item">
-                <img 
-                  src={img.url} 
-                  alt={img.alt} 
-                  className="photo-strip-img" 
-                  loading="lazy"
-                  onError={(e) => {
-                    e.target.src = img.fallback;
-                  }}
+          {/* Slider */}
+          <div
+            className="gallery-slider"
+            onMouseEnter={() => setIsPaused(true)}
+            onMouseLeave={() => setIsPaused(false)}
+          >
+            {/* Slides */}
+            <div className="gallery-track">
+              {gallerySlides.map((slide, idx) => (
+                <div
+                  key={idx}
+                  className={`gallery-slide ${idx === activeSlide ? 'active' : ''}`}
+                  aria-hidden={idx !== activeSlide}
+                >
+                  <img
+                    src={slide.url}
+                    alt={slide.alt}
+                    className="gallery-slide-img"
+                    loading="lazy"
+                    onError={(e) => { e.target.src = slide.fallback; }}
+                  />
+                  {/* Caption overlay */}
+                  <div className={`gallery-caption ${idx === activeSlide ? 'caption-visible' : ''}`}>
+                    <h3 className="gallery-caption-title">{slide.caption}</h3>
+                    <p className="gallery-caption-sub">{slide.sub}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Prev / Next arrows */}
+            <button
+              className="gallery-arrow gallery-arrow-prev"
+              onClick={goPrev}
+              aria-label="Previous image"
+            >
+              ‹
+            </button>
+            <button
+              className="gallery-arrow gallery-arrow-next"
+              onClick={goNext}
+              aria-label="Next image"
+            >
+              ›
+            </button>
+
+            {/* Dot indicators */}
+            <div className="gallery-dots">
+              {gallerySlides.map((_, idx) => (
+                <button
+                  key={idx}
+                  className={`gallery-dot ${idx === activeSlide ? 'gallery-dot-active' : ''}`}
+                  onClick={() => goToSlide(idx)}
+                  aria-label={`Go to slide ${idx + 1}`}
                 />
-              </div>
+              ))}
+            </div>
+
+            {/* Progress bar */}
+            <div className="gallery-progress">
+              <div
+                className="gallery-progress-bar"
+                style={{ animationPlayState: isPaused ? 'paused' : 'running' }}
+                key={activeSlide}
+              />
+            </div>
+          </div>
+
+          {/* Thumbnail strip below slider */}
+          <div className="gallery-thumbs">
+            {gallerySlides.map((slide, idx) => (
+              <button
+                key={idx}
+                className={`gallery-thumb ${idx === activeSlide ? 'gallery-thumb-active' : ''}`}
+                onClick={() => goToSlide(idx)}
+                aria-label={slide.alt}
+              >
+                <img
+                  src={slide.url}
+                  alt={slide.alt}
+                  onError={(e) => { e.target.src = slide.fallback; }}
+                />
+              </button>
             ))}
           </div>
         </div>

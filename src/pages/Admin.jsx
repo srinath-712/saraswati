@@ -49,53 +49,33 @@ export default function Admin({ offers, setOffers, bannerSettings, setBannerSett
     setBannerText(bannerSettings.text);
   }, [bannerSettings]);
 
-  // Check Supabase session & local fallback session on mount
+  // Check Supabase session on mount & auto-logout when leaving Admin page
   useEffect(() => {
     let unsubscribe = () => {};
 
     if (hasSupabaseConfig) {
-      // 1. Initial Supabase session check
-      getSupabaseSession().then((session) => {
-        if (session && session.user) {
-          setIsLoggedIn(true);
-          setAuthMode('supabase');
-          setCurrentUserEmail(session.user.email || '');
-        } else {
-          // Check fallback session if no Supabase session
-          const fallbackSession = sessionStorage.getItem('saraswati_admin_logged');
-          if (fallbackSession === 'true') {
-            setIsLoggedIn(true);
-            setAuthMode('fallback');
-          }
-        }
-      });
-
-      // 2. Listen to Auth State Changes in Supabase
+      // Listen to Auth State Changes in Supabase
       unsubscribe = onSupabaseAuthStateChange((_event, session) => {
         if (session && session.user) {
           setIsLoggedIn(true);
           setAuthMode('supabase');
           setCurrentUserEmail(session.user.email || '');
         } else {
-          const fallbackSession = sessionStorage.getItem('saraswati_admin_logged');
-          if (fallbackSession !== 'true') {
-            setIsLoggedIn(false);
-            setAuthMode('fallback');
-            setCurrentUserEmail('');
-          }
+          setIsLoggedIn(false);
+          setAuthMode('fallback');
+          setCurrentUserEmail('');
         }
       });
-    } else {
-      // Local fallback session check when Supabase is not configured
-      const fallbackSession = sessionStorage.getItem('saraswati_admin_logged');
-      if (fallbackSession === 'true') {
-        setIsLoggedIn(true);
-        setAuthMode('fallback');
-      }
     }
 
+    // Cleanup: When admin leaves the Admin section (navigates to Home, Offers, etc.),
+    // automatically log out so returning to Admin requires logging in again.
     return () => {
       unsubscribe();
+      sessionStorage.removeItem('saraswati_admin_logged');
+      if (hasSupabaseConfig) {
+        signOutFromSupabase().catch(() => {});
+      }
     };
   }, [hasSupabaseConfig]);
 
@@ -627,33 +607,107 @@ export default function Admin({ offers, setOffers, bannerSettings, setBannerSett
                   </select>
                 </div>
 
-                {/* Image URL & Presets */}
-                <div className="form-group">
-                  <label>Image URL (Paste URL or click a preset below)</label>
-                  <input 
-                    type="text" 
-                    className="form-control" 
-                    placeholder="https://..." 
-                    value={offerImage}
-                    onChange={(e) => setOfferImage(e.target.value)}
-                  />
-                  <div style={{ marginTop: '0.5rem' }}>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--ink-light)', display: 'block', marginBottom: '0.25rem' }}>
-                      Quick image presets:
+                {/* Image Selection: Stock Gallery, Upload, or Custom URL */}
+                <div className="form-group" style={{ background: '#FAF7F2', padding: '1rem', borderRadius: '8px', border: '1px solid var(--basket-tan)' }}>
+                  <label style={{ fontWeight: '700', color: 'var(--deep-forest)', display: 'block', marginBottom: '0.5rem' }}>
+                    🖼️ Product Image (Choose Stock, Upload photo, or Paste URL)
+                  </label>
+
+                  {/* 1. Upload from Phone / PC Gallery */}
+                  <div style={{ marginBottom: '0.75rem' }}>
+                    <label style={{ fontSize: '0.8rem', fontWeight: '600', display: 'block', marginBottom: '0.25rem' }}>
+                      Option A: Upload from your device gallery
+                    </label>
+                    <input 
+                      type="file" 
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files && e.target.files[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onloadend = () => setOfferImage(reader.result);
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                      style={{ fontSize: '0.825rem', padding: '0.4rem', background: '#fff', border: '1px solid #ccc', borderRadius: '4px', width: '100%' }}
+                    />
+                  </div>
+
+                  {/* 2. Stock Image Gallery */}
+                  <div style={{ marginBottom: '0.75rem' }}>
+                    <span style={{ fontSize: '0.8rem', fontWeight: '600', display: 'block', marginBottom: '0.35rem' }}>
+                      Option B: Choose from Stock Image Library
                     </span>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem' }}>
-                      {presetImages.map((img, idx) => (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: '0.4rem', maxHeight: '160px', overflowY: 'auto', padding: '0.25rem', background: '#fff', border: '1px solid #ddd', borderRadius: '6px' }}>
+                      {[
+                        { label: '🌻 Oil', url: 'https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?auto=format&fit=crop&q=80&w=400' },
+                        { label: '🌾 Rice', url: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?auto=format&fit=crop&q=80&w=400' },
+                        { label: '🌶️ Spices', url: 'https://images.unsplash.com/photo-1596040033229-a9821ebd058d?auto=format&fit=crop&q=80&w=400' },
+                        { label: '🍅 Tomatoes', url: 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=400' },
+                        { label: '🥔 Vegetables', url: 'https://images.unsplash.com/photo-1518977676601-b53f82aba655?auto=format&fit=crop&q=80&w=400' },
+                        { label: '🍌 Fruits', url: 'https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?auto=format&fit=crop&q=80&w=400' },
+                        { label: '🥛 Milk & Dairy', url: 'https://images.unsplash.com/photo-1563636619-e9143da7973b?auto=format&fit=crop&q=80&w=400' },
+                        { label: '🍪 Biscuits', url: 'https://images.unsplash.com/photo-1599490659273-e3b6900d1487?auto=format&fit=crop&q=80&w=400' },
+                        { label: '🧃 Drinks', url: 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?auto=format&fit=crop&q=80&w=400' },
+                        { label: '🧼 Soaps', url: 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&q=80&w=400' },
+                        { label: '🧴 Shampoo', url: 'https://images.unsplash.com/photo-1526947425960-945c6e72858f?auto=format&fit=crop&q=80&w=400' },
+                        { label: '🍫 Sweets', url: 'https://images.unsplash.com/photo-1549007994-cb92caebd54b?auto=format&fit=crop&q=80&w=400' },
+                      ].map((item, idx) => (
                         <button
                           key={idx}
                           type="button"
-                          onClick={() => setOfferImage(img.url)}
-                          style={{ fontSize: '0.7rem', padding: '0.2rem 0.4rem', border: '1px solid var(--basket-tan)', borderRadius: '3px', cursor: 'pointer', background: 'var(--white)' }}
+                          onClick={() => setOfferImage(item.url)}
+                          style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            gap: '0.2rem',
+                            padding: '0.3rem',
+                            border: offerImage === item.url ? '2px solid var(--turmeric)' : '1px solid #eee',
+                            borderRadius: '4px',
+                            background: offerImage === item.url ? '#FFF8EE' : '#FAF9F6',
+                            cursor: 'pointer',
+                            fontSize: '0.7rem'
+                          }}
                         >
-                          {img.label}
+                          <img src={item.url} alt={item.label} style={{ width: '100%', height: '40px', objectFit: 'cover', borderRadius: '3px' }} />
+                          <span>{item.label}</span>
                         </button>
                       ))}
                     </div>
                   </div>
+
+                  {/* 3. Direct Image URL Input */}
+                  <div>
+                    <label style={{ fontSize: '0.8rem', fontWeight: '600', display: 'block', marginBottom: '0.25rem' }}>
+                      Option C: Paste custom image URL
+                    </label>
+                    <input 
+                      type="text" 
+                      className="form-control" 
+                      placeholder="https://..." 
+                      value={offerImage}
+                      onChange={(e) => setOfferImage(e.target.value)}
+                      style={{ fontSize: '0.85rem' }}
+                    />
+                  </div>
+
+                  {/* Live Image Preview */}
+                  {offerImage && (
+                    <div style={{ marginTop: '0.75rem', padding: '0.5rem', background: '#fff', borderRadius: '6px', border: '1px solid #e0e0e0', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      <img src={offerImage} alt="Preview" style={{ width: '50px', height: '50px', objectFit: 'cover', borderRadius: '4px' }} />
+                      <div>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--deep-forest)', fontWeight: '600', display: 'block' }}>Image Selected</span>
+                        <button 
+                          type="button" 
+                          onClick={() => setOfferImage('')}
+                          style={{ color: '#d32f2f', background: 'none', border: 'none', fontSize: '0.7rem', padding: 0, cursor: 'pointer', textDecoration: 'underline' }}
+                        >
+                          Clear image
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Featured Checkbox */}
